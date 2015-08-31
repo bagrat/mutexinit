@@ -14,10 +14,10 @@ Here is a simple example::
         __metaclass__ = MutexInitMeta
 
         @subinit
-        def foo(bar, baz):
+        def foo(self, bar, baz):
             print('Running "foo" constructor')
             
-        @sub_init
+        @subinit
         def bar(self, foo, baz):
             print('Running "bar" constructor')
             
@@ -27,4 +27,5 @@ This is all to make a class to have mutually exclusive constructors. After defin
     Running "foo" constructor
     >>> my_instance2 = MyClass(foo=9, baz=8)
     Running "bar" constructor
-    
+    >>> my_instance2 = MyClass(foo=None, baz=8)
+    AttributeError: Mutex init arguments cannot be None
