@@ -56,7 +56,7 @@ class MutexInitMeta(type):
         return getattr(f, cls.ATTR_NAME_SUBINIT_MARK, False)
 
 
-def sub_init(func):
+def subinit(func):
     exclude_args = ['self']
     args = [arg for arg in sorted(inspect.getargspec(func)[0]) if arg not in exclude_args]
 
@@ -74,23 +74,3 @@ def sub_init(func):
     MutexInitMeta.mark_subinit(wrapper, args)
 
     return wrapper
-
-
-class MyClass(object):
-    __metaclass__ = MutexInitMeta
-
-    @sub_init
-    def foo(self, bar, baz):
-        self.foo = bar + baz
-        self.bar = bar
-        self.baz = baz
-
-    @sub_init
-    def bar(self, foo, baz):
-        self.foo = foo
-        self.bar = foo - baz
-        self.baz = baz
-
-obj = MyClass(foo=1, baz=2)
-
-print(obj.__dict__)
