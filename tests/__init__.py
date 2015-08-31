@@ -30,3 +30,7 @@ class MainTests(TestCase):
         self.assertRaises(AttributeError, SomeClass, blablabla=0)
         init1_call.assert_called_once_with()  # This is the previous call again
         init2_call.assert_called_once_with()  # This is the previous call
+
+        self.assertRaises(AttributeError, SomeClass, param1=None, param2=0)
+        init1_call.assert_called_once_with()  # This is the previous call
+        init2_call.assert_called_once_with()  # This is the previous call
