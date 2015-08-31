@@ -10,67 +10,70 @@ class MutexInitMeta(type):
     ATTR_NAME_ARGS = '_args'
     ATTR_NAME_ARG_MAP = '_arg_method_dict'
 
-    def __new__(cls, name, bases, namespace):
-        result = super(MutexInitMeta, cls).__new__(cls, name, bases, namespace)
+    def __new__(mcs, name, bases, namespace):
+        # Initialise the class
+        klass = super(MutexInitMeta, mcs).__new__(mcs, name, bases, namespace)
 
+        # Get all methods marked as subinit
         subinit_funcs = filter(
-            lambda f: cls.is_subinit(f),
+            lambda f: mcs.is_subinit(f),
             map(
-                lambda a: getattr(result, a),
-                dir(result)
+                lambda a: getattr(klass, a),
+                dir(klass)
             )
         )
+        # Generate and store the argument-method mapping dictionary
         arg_method_dict = {
             key: value for key, value in zip(
                 map(
-                    lambda f: getattr(f, cls.ATTR_NAME_ARGS),
+                    lambda f: getattr(f, mcs.ATTR_NAME_ARGS),
                     subinit_funcs
                 ),
                 subinit_funcs
             )
         }
-        setattr(result, cls.ATTR_NAME_ARG_MAP, arg_method_dict)
+        setattr(klass, mcs.ATTR_NAME_ARG_MAP, arg_method_dict)
 
+        # Define __init__ wrapper, that validates and dispatches to subinit
         def init_wrapper(self, **kwargs):
             provided_args = tuple(
                 sorted(kwargs.keys())
             )
 
             sub_init = self._arg_method_dict.get(provided_args, None)
-
-            if sub_init:
-                sub_init(self, **kwargs)
-            else:
+            if not sub_init:
                 raise AttributeError('Insufficient arguments')
 
-        result.__init__ = init_wrapper
-        return result
+            sub_init(self, **kwargs)
+
+        # Replace __init__ with the wrapper
+        klass.__init__ = init_wrapper
+        return klass
 
     @classmethod
-    def mark_subinit(cls, func, args):
-        setattr(func, cls.ATTR_NAME_SUBINIT_MARK, True)
-        setattr(func, cls.ATTR_NAME_ARGS, tuple(args))
+    def mark_subinit(mcs, func, args):
+        setattr(func, mcs.ATTR_NAME_SUBINIT_MARK, True)
+        setattr(func, mcs.ATTR_NAME_ARGS, tuple(args))
 
     @classmethod
-    def is_subinit(cls, f):
-        return getattr(f, cls.ATTR_NAME_SUBINIT_MARK, False)
+    def is_subinit(mcs, func):
+        return getattr(func, mcs.ATTR_NAME_SUBINIT_MARK, False)
 
 
 def subinit(func):
+    # Filter out the arguments of method being wrapped
     exclude_args = ['self']
     args = [arg for arg in sorted(inspect.getargspec(func)[0]) if arg not in exclude_args]
 
     @wraps(func)
     def wrapper(funcself, **kwargs):
-        if len(kwargs) == len(args):
-            for arg in args:
-                if (arg not in kwargs) or (kwargs[arg] is None):
-                    raise AttributeError
-        else:
-            raise AttributeError
+        # Check if any supplied argument is None
+        if [arg for arg in args if kwargs.get(arg) is None]:
+            raise AttributeError('Mutex init arguments cannot be None')
 
         return func(funcself, **kwargs)
 
+    # Mark the method as subinit (note the wrapper is marked)
     MutexInitMeta.mark_subinit(wrapper, args)
 
     return wrapper

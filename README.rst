@@ -17,7 +17,6 @@ Here is a simple example::
         def foo(bar, baz):
             print('Running "foo" constructor')
             
-        
         @sub_init
         def bar(self, foo, baz):
             print('Running "bar" constructor')
